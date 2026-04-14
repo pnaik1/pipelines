@@ -49,6 +49,7 @@ import {
 import CompareTable, { CompareTableProps } from 'src/components/CompareTable';
 import {
   compareCss,
+  COMPARE_PANEL_COUNT,
   ExecutionArtifact,
   FullArtifactPathMap,
   getScalarTableProps,
@@ -279,9 +280,9 @@ function CompareV2(props: CompareV2Props) {
   const [selectedArtifactsMap, setSelectedArtifactsMap] = useState<{
     [key: string]: SelectedArtifact[];
   }>({
-    [MetricsType.CONFUSION_MATRIX]: createSelectedArtifactArray(2),
-    [MetricsType.HTML]: createSelectedArtifactArray(2),
-    [MetricsType.MARKDOWN]: createSelectedArtifactArray(2),
+    [MetricsType.CONFUSION_MATRIX]: createSelectedArtifactArray(COMPARE_PANEL_COUNT),
+    [MetricsType.HTML]: createSelectedArtifactArray(COMPARE_PANEL_COUNT),
+    [MetricsType.MARKDOWN]: createSelectedArtifactArray(COMPARE_PANEL_COUNT),
   });
 
   const queryParamRunIds = new URLParser(props).get(QUERY_PARAMS.runlist);
@@ -339,32 +340,24 @@ function CompareV2(props: CompareV2Props) {
   } = useArtifactTypes();
 
   // Ensure that the two-panel selected artifacts are present in selected valid run list.
+  // Uses run_id (via selectedItem.runId) when available, falling back to display_name
+  // for selections made before runId was populated.
   const getVerifiedTwoPanelSelection = (
     runArtifacts: RunArtifact[],
     selectedArtifacts: SelectedArtifact[],
-  ) => {
-    const artifactsPresent: boolean[] = new Array(2).fill(false);
-    for (const runArtifact of runArtifacts) {
-      const runName = runArtifact.run.display_name;
-      if (runName === selectedArtifacts[0].selectedItem.itemName) {
-        artifactsPresent[0] = true;
-      } else if (runName === selectedArtifacts[1].selectedItem.itemName) {
-        artifactsPresent[1] = true;
+  ): SelectedArtifact[] => {
+    const validRunIds = new Set(runArtifacts.map(runArtifact => runArtifact.run.run_id));
+    const validRunDisplayNames = new Set(
+      runArtifacts.map(runArtifact => runArtifact.run.display_name),
+    );
+    return selectedArtifacts.map(selectedArtifact => {
+      const { runId, itemName } = selectedArtifact.selectedItem;
+      const isValid = runId ? validRunIds.has(runId) : validRunDisplayNames.has(itemName);
+      if (isValid) {
+        return selectedArtifact;
       }
-    }
-
-    for (let i: number = 0; i < artifactsPresent.length; i++) {
-      if (!artifactsPresent[i]) {
-        selectedArtifacts[i] = {
-          selectedItem: {
-            itemName: '',
-            subItemName: '',
-          },
-        };
-      }
-    }
-
-    return [...selectedArtifacts];
+      return { selectedItem: { itemName: '', subItemName: '' } };
+    });
   };
 
   useEffect(() => {

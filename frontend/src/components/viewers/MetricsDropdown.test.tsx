@@ -233,6 +233,7 @@ describe('MetricsDropdown', () => {
           itemName: 'run1',
           subItemName: 'execution1',
           subItemSecondaryName: 'artifact1',
+          runId: '1',
         },
       },
       {
